@@ -2,33 +2,41 @@ import os
 from mido import MidiFile, tempo2bpm
 from datetime import datetime
 
-def change_note_velocity(midi_file):
-    print("change velocity done")
 
+
+def prepare_path(file_in):  
+    # input and output folder
+    file_dir = os.path.dirname(os.path.realpath('__file__'))
+    file_midi_read = file_dir +  "\\Input\\" + file_in
+    file_output = file_dir + "\\Output\\" + "updated_" + file_in
+    return (file_midi_read,file_output)
+
+def change_note_velocity(file_name):
+    file_in, file_out = prepare_path(file_name)
+    midi_file = MidiFile(file_in)
+    
+    for i, track in enumerate(midi_file.tracks):
+        for msg in track:
+            if msg.type == "note_on":
+                msg.velocity = 100
+    midi_file.save(file_out)
+    return
 
 def midi_to_text(file_name):
-    # Input the file name, then use it to parse to text file
-    # file_midi_read = input("Enter midi file name: ")
-    file_midi_read = file_name
-    if file_midi_read.find(".mid") == -1:
-        file_midi_read = file_midi_read + ".mid"
+    # Get path
+    file_midi_read, file_output = prepare_path(file_name)
 
     # Get Date time for output file
-    now = datetime.now()
-    dt_string = now.strftime("%d%m%y_%H%M%S")
-    file_text_output = "MidiToText" + dt_string + ".txt"
-    print(file_text_output)
+    # now = datetime.now()
+    # dt_string = now.strftime("%d%m%y_%H%M%S")
 
-    # Add path to file_midi_read,file_text_output
-    file_dir = os.path.dirname(os.path.realpath('__file__'))
-    file_midi_read = file_dir +  "\\Input\\" + file_midi_read
-    file_text_output = file_dir + "\\Output\\" + file_text_output
+    file_text_output = file_output[:-4] + ".txt"
 
     output_text = ""
     midi_file = MidiFile(file_midi_read)
     for i,track in enumerate(midi_file.tracks):
-        output_text += f"Track {i}: {track.name}\n")
-        print(f"Track {i}: {track.name}\n")
+        output_text += f"Track {i}: {track.name}\n"
+        # print(f"Track {i}: {track.name}\n")
         for msg in track:
             output_text += str(msg) + "\n"
             # output_text += "Receive message type: " + msg.type + "\n"
@@ -47,4 +55,7 @@ def midi_to_text(file_name):
     return
 
 if __name__ == "__main__":
-    midi_to_text("loanhquanh.mid")
+    # midi_to_text("MoonRiver-with sustain.mid")
+    # midi_to_text("MoonRiver-without sustain.mid")
+    midi_to_text("updated_MoonRiver-with sustain.mid")
+    # change_note_velocity("MoonRiver-with sustain.mid")
