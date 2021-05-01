@@ -1,9 +1,9 @@
 import os
+import configparser
 from mido import MidiFile, tempo2bpm
 from datetime import datetime
 
-
-
+# Prepare input and output file path
 def prepare_path(file_in):  
     # input and output folder
     file_dir = os.path.dirname(os.path.realpath('__file__'))
@@ -11,6 +11,7 @@ def prepare_path(file_in):
     file_output = file_dir + "\\Output\\" + "updated_" + file_in
     return (file_midi_read,file_output)
 
+# Change velocity function
 def change_note_velocity(file_name):
     file_in, file_out = prepare_path(file_name)
     midi_file = MidiFile(file_in)
@@ -22,6 +23,7 @@ def change_note_velocity(file_name):
     midi_file.save(file_out)
     return
 
+# Midi to text function
 def midi_to_text(file_name):
     # Get path
     file_midi_read, file_output = prepare_path(file_name)
@@ -55,7 +57,11 @@ def midi_to_text(file_name):
     return
 
 if __name__ == "__main__":
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    print(config['file']['input-file'])
+    print(config['file']['output-folder'])
     # midi_to_text("MoonRiver-with sustain.mid")
     # midi_to_text("MoonRiver-without sustain.mid")
-    midi_to_text("updated_MoonRiver-with sustain.mid")
+    # midi_to_text("updated_MoonRiver-with sustain.mid")
     # change_note_velocity("MoonRiver-with sustain.mid")
