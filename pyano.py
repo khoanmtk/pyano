@@ -3,65 +3,78 @@ import configparser
 from mido import MidiFile, tempo2bpm
 from datetime import datetime
 
-# Prepare input and output file path
-def prepare_path(file_in):  
-    # input and output folder
-    file_dir = os.path.dirname(os.path.realpath('__file__'))
-    file_midi_read = file_dir +  "\\Input\\" + file_in
-    file_output = file_dir + "\\Output\\" + "updated_" + file_in
-    return (file_midi_read,file_output)
+class Pyano:
+    def __init__(self, midi_file, file_name = 'file', min=70, max=110, range=10):
+        self.midi_file = midi_file
+        self.file_name = os.path.basename(midi_file.filename)
+        self.min = min
+        self.max = max
+        self.range = range
+        self.output_text = ""
+        #midi_file = MidiFile(file_name
 
-# Change velocity function
-def change_note_velocity(file_name):
-    file_in, file_out = prepare_path(file_name)
-    midi_file = MidiFile(file_in)
+    # Change velocity function
+    def change_note_velocity(self):
+        for i, track in enumerate(midi_file.tracks):
+            for msg in track:
+                if msg.type == "note_on":
+                    msg.velocity = 100
+
+    # Midi to text function
+    def midi_to_text(self):
+        # Get path
+        midi_file = MidiFile(input_file)
+
+        for i,track in enumerate(midi_file.tracks):
+            self.output_text += f"Track {i}: {track.name}\n"
+            # print(f"Track {i}: {track.name}\n")
+            for msg in track:
+                self.output_text += str(msg) + "\n"
+        
+    # Generate the file base on name of input_file and output_folder
+    def write_output_midi(self, output_folder):
+        if not os.path.isdir(output_folder):
+            os.mkdir(output_folder)
+        file_output = output_folder + 'enhanced_' + self.file_name
+
+        f = open(file_output,"w")
+        f.write(self.output_text)
+        f.close()
     
-    for i, track in enumerate(midi_file.tracks):
-        for msg in track:
-            if msg.type == "note_on":
-                msg.velocity = 100
-    midi_file.save(file_out)
-    return
+    def write_output_text(self, output_folder):
+        if not os.path.isdir(output_folder):
+            os.mkdir(output_folder)
+        file_output = output_folder + self.file_name.replace('.mid', '.txt')
+        self.midi_file.save(file_output)
 
-# Midi to text function
-def midi_to_text(file_name):
-    # Get path
-    file_midi_read, file_output = prepare_path(file_name)
-
-    # Get Date time for output file
-    # now = datetime.now()
-    # dt_string = now.strftime("%d%m%y_%H%M%S")
-
-    file_text_output = file_output[:-4] + ".txt"
-
-    output_text = ""
-    midi_file = MidiFile(file_midi_read)
-    for i,track in enumerate(midi_file.tracks):
-        output_text += f"Track {i}: {track.name}\n"
-        # print(f"Track {i}: {track.name}\n")
-        for msg in track:
-            output_text += str(msg) + "\n"
-            # output_text += "Receive message type: " + msg.type + "\n"
-            # if msg.type=="set_tempo":
-            #     output_text += "tempo: " + str(tempo2bpm(msg.tempo)) + "\n"
-            #     output_text += "type: " + str(msg.type) + "\n"
-            # if msg.type=="note_on":
-            #     output_text += "note on:" + str(msg.note)
-            #     output_text += " velocity:" + str(msg.velocity) + "\n"
-            # if msg.type=="note_off":
-            #     output_text += "note off:" + str(msg.note) + "\n"
-
-    f = open(file_text_output,"w")
-    f.write(output_text)
-    f.close()
-    return
-
+# main call
 if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read('config.ini')
-    print(config['file']['input-file'])
-    print(config['file']['output-folder'])
-    # midi_to_text("MoonRiver-with sustain.mid")
-    # midi_to_text("MoonRiver-without sustain.mid")
-    # midi_to_text("updated_MoonRiver-with sustain.mid")
-    # change_note_velocity("MoonRiver-with sustain.mid")
+    input_file = config['file']['input-file']
+    output_folder = config['file']['output-folder']
+    midi_file = MidiFile(input_file)
+    min = config['threshold']['min']
+    max = config['threshold']['max']
+    random_range = config['threshold']['random-range']
+    to_write_midi = False
+
+    pyano = Pyano(midi_file, min, max, random_range)
+
+    if config['feature'].getboolean('midi-to-text'):
+        pyano.midi_to_text()
+        pyano.write_output_text(output_folder)
+    
+    if config['feature'].getboolean('add-pedal'):
+        to_write_midi = True
+
+    if config['feature'].getboolean('simplify-left-hand'):
+        to_write_midi = True
+
+    if config['feature'].getboolean('apply-threshold'):
+        to_write_midi = True
+        pyano.change_note_velocity()
+    
+    if to_write_midi:
+        pyano.write_output_midi(output_folder)
+    
