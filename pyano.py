@@ -13,8 +13,8 @@ class Pyano:
         self.output_text = ""
         #midi_file = MidiFile(file_name
 
-    # Change velocity function
-    def change_note_velocity(self):
+    # Correct velocity function
+    def correct_velocity(self):
         for i, track in enumerate(midi_file.tracks):
             for msg in track:
                 if msg.type == "note_on":
@@ -30,6 +30,14 @@ class Pyano:
             # print(f"Track {i}: {track.name}\n")
             for msg in track:
                 self.output_text += str(msg) + "\n"
+    
+    # Add pedal to the midi file
+    def add_pedal(self):
+        pass
+
+    # simplify the left hand to only press the chord
+    def simplify_left_hand(self):
+        pass
         
     # Generate the file base on name of input_file and output_folder
     def write_output_midi(self, output_folder):
@@ -73,7 +81,7 @@ if __name__ == "__main__":
 
     if config['feature'].getboolean('apply-threshold'):
         to_write_midi = True
-        pyano.change_note_velocity()
+        pyano.correct_velocity()
     
     if to_write_midi:
         pyano.write_output_midi(output_folder)
