@@ -7,12 +7,6 @@ How the tool make MIDI sound better ?
 2. It make the velocity of note not too high or not too low
 3. It randomize the velocity to same as human
 
-Todo:
-- Add simplify left hand feature, change the lefthand arpeggio to:
-  - Only press chord for each bar.
-  - Or some common arpeggio pattern.
-  > Purpose of this feature is create the simpler piano arrangment for someone.
-
 ## Getting Started
 
 ### 1. Install Dependencies
@@ -48,3 +42,10 @@ Need to edit the config.ini and control the tool
 ```
 python pyano.py
 ``` 
+
+## Todo
+
+- [ ] Add simplify left hand feature, change the lefthand arpeggio to:
+  - [ ] Only press chord for each bar.
+  - [ ] Or some common arpeggio pattern.
+  > Purpose of this feature is create the simpler piano arrangment for someone.
