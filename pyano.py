@@ -1,8 +1,8 @@
 import os
 import configparser
 import random
+import glob
 from mido import MidiFile
-from datetime import datetime
 
 from mido.messages.messages import Message
 from mido.midifiles.meta import MetaMessage
@@ -41,7 +41,8 @@ class Pyano:
     def add_pedal(self):
         # calculate time pass in midi
         time_pass = 0
-        beat_per_bar = 0
+        time_pass_singature = 0
+        beat_per_bars = []
         pedal_track = MidiTrack()
         pedal_track.name = "pedal"
 
@@ -50,26 +51,49 @@ class Pyano:
             if time_pass == 0:
                 for msg in track:
                     if msg.type == "time_signature":
-                        beat_per_bar = msg.numerator
+                        time_pass_singature += msg.time
+                        beat_per_bar = [msg.numerator,time_pass_singature]
+                        beat_per_bars.append(beat_per_bar)
                     if msg.type == "note_on" or msg.type == "note_off" \
                             or msg.type == "control_change":
                         time_pass += msg.time
         
         # Add pedal with interval to new track.
         time_pass_pedal = 0
-        interval = self.midi_file.ticks_per_beat * beat_per_bar
-        while time_pass_pedal < time_pass:
+        intervals = []
+        for beat_per_bar in beat_per_bars:
+            intervals.append(self.midi_file.ticks_per_beat * beat_per_bar[0])
+
+        pedal_msg_on = Message("control_change", 
+                        channel = 2, control = 64, 
+                        value = 100, time = 0)
+        pedal_track.append(pedal_msg_on)
+
+        interval_index = 0
+        while time_pass_pedal <= time_pass - intervals[interval_index]:
+            if interval_index < len(beat_per_bars) - 1:
+                if time_pass_pedal == beat_per_bars[interval_index + 1][1]:
+                    interval_index = interval_index + 1 
+
             # Add pedal off and pedal all before and after this note
             pedal_msg_off = Message("control_change", 
                                     channel = 2, control = 64, 
-                                    value = 0, time = interval-1)
+                                    value = 0, time = intervals[interval_index]-1)
             pedal_msg_on = Message("control_change", 
                                     channel = 2, control = 64, 
                                     value = 100, time = 1)
 
             pedal_track.append(pedal_msg_off)
             pedal_track.append(pedal_msg_on)
-            time_pass_pedal += interval
+            
+            time_pass_pedal += intervals[interval_index]
+
+        # Off pedal at the end of the song
+        pedal_msg_off = Message("control_change", 
+                        channel = 2, control = 64, 
+                        value = 0, time = intervals[interval_index] - 1)
+        pedal_track.append(pedal_msg_off)
+
         eot = MetaMessage('end_of_track', time=0)
         pedal_track.append(eot)
         self.midi_file.tracks.append(pedal_track)
@@ -99,30 +123,32 @@ class Pyano:
 if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read('config.ini')
-    input_file = config['file']['input-file']
+    input_folder = config['file']['input-folder']
     output_folder = config['file']['output-folder']
-    midi_file = MidiFile(input_file)
     min = int(config['threshold']['min'])
-    max = int(config['threshold']['max'])
+    max = int(config['threshold']['max']) 
     random_range = int(config['threshold']['random-range'])
-    to_write_midi = False
 
-    pyano = Pyano(midi_file, min, max, random_range)
-    
-    if config['feature'].getboolean('add-pedal'):
-        pyano.add_pedal()
-        to_write_midi = True
+    for input_file in glob.glob(input_folder + "/*.mid"):
+        midi_file = MidiFile(input_file)
+        to_write_midi = False
 
-    if config['feature'].getboolean('simplify-left-hand'):
-        to_write_midi = True
+        pyano = Pyano(midi_file, min, max, random_range)
+        
+        if config['feature'].getboolean('add-pedal'):
+            pyano.add_pedal()
+            to_write_midi = True
 
-    if config['feature'].getboolean('apply-threshold'):
-        to_write_midi = True
-        pyano.correct_velocity()
+        if config['feature'].getboolean('simplify-left-hand'):
+            to_write_midi = True
 
-    if config['feature'].getboolean('midi-to-text'):
-        pyano.midi_to_text()
-        pyano.write_output_text(output_folder)
-    
-    if to_write_midi:
-        pyano.write_output_midi(output_folder)
+        if config['feature'].getboolean('apply-threshold'):
+            to_write_midi = True
+            pyano.correct_velocity()
+
+        if config['feature'].getboolean('midi-to-text'):
+            pyano.midi_to_text()
+            pyano.write_output_text(output_folder)
+        
+        if to_write_midi:
+            pyano.write_output_midi(output_folder)

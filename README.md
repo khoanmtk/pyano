@@ -22,7 +22,7 @@ pip install mido
 Need to edit the config.ini and control the tool
 ```
   [file]
-  input-file: put the midi file path here
+  input-folder: put input folder here
   output-folder: put output folder here
 
   [threshold]
