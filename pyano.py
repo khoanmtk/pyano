@@ -46,9 +46,9 @@ class Pyano:
                 if time_pass == 0:
                     for msg in track:
                         if msg.type == "time_signature":
+                            time_pass_singature += msg.time
                             measure_interval = {"time": time_pass_singature, 
                                 "interval":self.midi_file.ticks_per_beat * msg.numerator}
-                            time_pass_singature += msg.time
                             self.intervals.append(measure_interval)
                         if msg.type == "note_on" or msg.type == "note_off" \
                                 or msg.type == "control_change":
@@ -140,18 +140,21 @@ class Pyano:
 
         # The bassline base on track 1
         measure_index = 0  
-
         # move msg to each measure
         for msg in self.midi_file.tracks[1]:
             # Add bassline here
             current_time += msg.time 
 
             # Increase to the right measure
-            if measure_index != len(self.measure_timestamp) - 1:
+            if measure_index < len(self.measure_timestamp) - 1:
+                # print(str(measure_index) + " " + str (len(self.measure_timestamp) - 1))
                 while current_time >= self.measure_timestamp[measure_index + 1]["time"]:
                     if msg.type == "note_off":
                         self.measure_timestamp[measure_index + 1]["notes"].append(msg.note)
                     measure_index += 1
+                    # break if reach maximum to avoid access outbound
+                    if measure_index == len(self.measure_timestamp) - 1:
+                        break
             
             # Add note on to the list
             if msg.type == "note_on":
