@@ -149,6 +149,8 @@ class Pyano:
             # Increase to the right measure
             if measure_index != len(self.measure_timestamp) - 1:
                 while current_time >= self.measure_timestamp[measure_index + 1]["time"]:
+                    if msg.type == "note_off":
+                        self.measure_timestamp[measure_index + 1]["notes"].append(msg.note)
                     measure_index += 1
             
             # Add note on to the list
