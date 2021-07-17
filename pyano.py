@@ -19,9 +19,15 @@ class Pyano:
         self.max = max
         self.range = range
         self.output_text = ""
+        # bassline midi file
         self.bassline_midi = MidiFile(ticks_per_beat=midi_file.ticks_per_beat)
+        # intervals is list of {"time":timestamp that begin use the interval,"interval":tick number}
         self.intervals = []
+        # measure_timestamp time stamp of each measure of the song
+        self.measure_timestamp = []
+        # length of the song
         self.time_pass = 0
+        # flag to only update midi information one time
         self.initialize = 1
 
     def prepare_internal_midi_info(self):
@@ -32,8 +38,7 @@ class Pyano:
             # list of note, separate to each bars
             time_pass = 0
             time_pass_singature = 0
-            #[timestamp, interval]
-            measure_intervals = []
+            time_measure = 0
 
             # Trace the midi to find the information of midi length and beat
             for track in self.midi_file.tracks:
@@ -46,6 +51,17 @@ class Pyano:
                         if msg.type == "note_on" or msg.type == "note_off" \
                                 or msg.type == "control_change":
                             time_pass += msg.time
+
+            interval_index = 0
+            while interval_index < len(self.intervals):
+                self.measure_timestamp.append(time_measure)
+                time_measure += self.intervals[interval_index]["interval"]
+                # Increase index when pass the limit to exit loop
+                # Increase index when pass the next interval timestamp
+                if (time_measure >= time_pass) or \
+                    (interval_index < len(self.intervals) - 1 and \
+                        time_measure == self.intervals[interval_index + 1]["time"]):
+                    interval_index += 1
 
             self.time_pass = time_pass
             self.initialize = 0
@@ -136,24 +152,31 @@ class Pyano:
         interval_index = 0
         note_list = []
         note_interval = {"notes":[], "interval":0}
+
+        # move msg to each measure
         for msg in self.midi_file.tracks[1]:
             # Add bassline here
             if interval_index < len(self.intervals) - 1:
                 if current_time == self.intervals[interval_index + 1]["time"]:
                     interval_index = interval_index + 1
-            
-            if current_interval < self.intervals[interval_index]["interval"]:
-                if msg.type == "note_on":
-                    note_interval["notes"].append(msg.note)
-                    note_interval["interval"] = self.intervals[interval_index]["interval"]
-            else:
+
+            # Increase timestamp
+            current_interval += msg.time
+            current_time += msg.time 
+
+            # reach out the limit, then make new measure
+            if current_interval >= self.intervals[interval_index]["interval"]:
                 note_list.append(note_interval.copy())
                 note_interval["notes"] = []
                 current_interval = 0
+            
+            # Add note on to the list
+            if msg.type == "note_on":
+                note_interval["notes"].append(msg.note)
+                note_interval["interval"] = self.intervals[interval_index]["interval"]
 
-            current_interval += msg.time
-            current_time += msg.time 
-        
+        # for i,note in enumerate(note_list):
+        #     print(f"{i}, {note}")
         # Find min of note to make the bass for each measure
         # bass_list  data is {bass note, interval of that note}
         bass_list = []
@@ -174,18 +197,30 @@ class Pyano:
         bass_track = MidiTrack()
 
         bass_interval = 0
+        msg_off_write = False
+        msg_on_write = False
+        note_to_off = 0
         for i,note in enumerate(bass_list):
             if note["note"] == -1:
                 bass_interval += note["interval"]
-                if i == len(bass_list) - 1:
-                    msg_off = Message("note_off", channel = 0, note=note["note"], velocity=64, time=bass_interval)
             else:
                 bass_interval = note["interval"]
                 msg_on = Message("note_on", channel = 0, note=note["note"], velocity=64, time=0)
-                if i < len(bass_list) - 1 and bass_list[i + 1]["note"] != -1:
-                    msg_off = Message("note_off", channel = 0, note=note["note"], velocity=64, time=bass_interval)
-            bass_track.append(msg_on)
-            bass_track.append(msg_off)
+                msg_on_write = True
+                note_to_off = note["note"]
+
+            if (i < len(bass_list) - 1 and bass_list[i + 1]["note"] != -1) or (i == len(bass_list) - 1):
+                msg_off = Message("note_off", channel = 0, note=note_to_off, velocity=64, time=bass_interval)
+                msg_off_write = True
+
+            if msg_on_write:
+                bass_track.append(msg_on)
+                msg_on_write = False
+
+            if msg_off_write: 
+                bass_track.append(msg_off)
+                msg_off_write = False
+
         self.bassline_midi.tracks.append(bass_track)   
         
     # Generate the file base on name of input_file and output_folder
